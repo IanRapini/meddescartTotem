@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Image } from 'react-native';
 import { db } from '../../config/firebase';
@@ -9,36 +9,68 @@ import { LinearGradient } from 'expo-linear-gradient';
 const TelaInicial = () => {
   const [status, setStatus] = useState<'parado' | 'iniciado'>('parado');
   const [totemID, setTotemID] = useState('');
+  const [totemName, setTotemName] = useState('');
 
-  const iniciarDescarteHandle = async () => {
-    updateDoc(doc(db, 'totens', totemID), {
-      status: 'iniciado',
-    });
-    setStatus('iniciado');
+  const fetchTotemName = async (id: string) => {
+    try {
+      const docRef = doc(db, 'totens', id);
+      const docSnap = await getDoc(docRef);
 
-    Alert.alert(
-      'Atenção',
-      `Selecione o totem ${totemID} no aplicativo para parear e começar o descarte`
-    );
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setTotemName(data?.totem || 'Desconhecido');
+      } else {
+        setTotemName('Desconhecido');
+      }
+    } catch (error) {
+      console.error('Erro ao buscar nome do totem:', error);
+      setTotemName('Desconhecido');
+    }
   };
 
-const handlecomoDescartar = () => {
-  router.push('/comoDescartar');
-};
+  const iniciarDescarteHandle = async () => {
+    try {
+      await updateDoc(doc(db, 'totens', totemID), {
+        status: 'iniciado',
+      });
+      setStatus('iniciado');
 
-const handleoqueDescartar = () => {
-  router.push('/oqueDescartar');
-};
+      Alert.alert(
+        'Atenção',
+        `Selecione o totem "${totemName}" no aplicativo para parear e começar o descarte`
+      );
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível iniciar o descarte.');
+    }
+  };
+
+  const handlecomoDescartar = () => {
+    router.push('/comoDescartar');
+  };
+
+  const handleoqueDescartar = () => {
+    router.push('/oqueDescartar');
+  };
 
   const mudarTela = async () => {
     onSnapshot(doc(db, 'totens', totemID), (doc) => {
       const data = doc.data();
-      if (data?.status == 'aguardo') router.replace('/descarte');
+      if (data?.status === 'aguardo') router.replace('/descarte');
     });
   };
 
   useEffect(() => {
-    AsyncStorage.getItem('@token_id').then((totemID) => setTotemID(totemID || ''));
+    AsyncStorage.getItem('@token_id').then(async (id) => {
+      if (id) {
+        setTotemID(id);
+        await fetchTotemName(id);
+      } else {
+        Alert.alert('Erro', 'Totem ID não encontrado.');
+      }
+    });
+  }, []);
+
+  useEffect(() => {
     mudarTela();
   }, [status]);
 
@@ -46,7 +78,7 @@ const handleoqueDescartar = () => {
     <LinearGradient colors={['#e6f8e0', '#f0fff4']} style={styles.container}>
       <Image
         source={require('@/assets/images/LOGO FINAL (3).png')}
-        style={{ width: 200, height: 200, }}
+        style={{ width: 200, height: 200 }}
         resizeMode="cover"
       />
       <Image
@@ -59,7 +91,7 @@ const handleoqueDescartar = () => {
         style={styles.button}
         onPress={() => handleoqueDescartar()}
       >
-        <Text style={styles.buttonText}>Oque descartar</Text>
+        <Text style={styles.buttonText}>O que descartar</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -69,16 +101,18 @@ const handleoqueDescartar = () => {
         <Text style={styles.buttonText}>Como descartar</Text>
       </TouchableOpacity>
 
-
       {status === 'parado' && (
-        <TouchableOpacity style={[styles.button, styles.startButton]} onPress={iniciarDescarteHandle}>
+        <TouchableOpacity
+          style={[styles.button, styles.startButton]}
+          onPress={iniciarDescarteHandle}
+        >
           <Text style={styles.buttonText}>Iniciar Descarte</Text>
         </TouchableOpacity>
       )}
 
       {status === 'iniciado' && (
         <Text style={styles.infoText}>
-          {`Selecione o totem ${totemID} no aplicativo para parear e começar o descarte`}
+          {`Selecione o totem "${totemName}" no aplicativo para parear e começar o descarte`}
         </Text>
       )}
     </LinearGradient>

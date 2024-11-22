@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 
 const handleVoltar = () => {
-  router.push('/(menu)');
+  router.push('/menu');
 };
 
 const InformacoesDescarte = () => {

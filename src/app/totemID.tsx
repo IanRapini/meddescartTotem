@@ -14,7 +14,7 @@ const SaveIdScreen = () => {
       getDoc(doc(db, 'totens', id)).then(async (doc) => {
         if (doc.exists()) {
           await AsyncStorage.setItem('@token_id', id);
-          router.replace('/(menu)');
+          router.replace('/menu');
         } else {
           Alert.alert('Erro', 'ID não encontrado');
         }
